@@ -337,8 +337,6 @@
        (continue> (next *rem) (some? *item))))
 
    ;; 2. Read common fields (needed for both success and rollback output)
-   (retrieve-warehouse-info *w-id :> {*w-tax :tax})
-   (retrieve-district-info *w-id *d-id :> {*d-tax :tax})
    (local-select> (keypath [*w-id *d-id] :next-oid) $$district :> *o-id)
    (local-select> (keypath [*w-id *d-id *c-id]) $$customer
                   :> {*c-discount :disc *c-last :last *c-credit :cr})
@@ -368,7 +366,6 @@
      (System/currentTimeMillis :> *now)
      (local-transform> [(keypath *order-key)
                         (termval {:rem-ol *ols-seq
-                                  :new-total 0.0
                                   :processed []
                                   :c-id *c-id
                                   :now *now
@@ -421,12 +418,9 @@
 
          (<<if (not= *ol-supply-w-id *w-id)
            (|warehouse *w-id))
-         (<<ramafn %add-total [*v]
-           (:> (+ *v *ol-amount)))
          (local-transform> [(keypath *order-key)
                             (multi-path
                               [:rem-ol (term next)]
-                              [:new-total (term %add-total)]
                               [:processed
                                NIL->VECTOR
                                AFTER-ELEM
@@ -440,8 +434,7 @@
 
      (local-select> (keypath *order-key)
        $$processed-items
-       :> {*final-total :new-total
-           *final-processed :processed
+       :> {*final-processed :processed
            *c-id :c-id
            *now :now
            *all-local? :all-local?
